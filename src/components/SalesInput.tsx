@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { UserInfo, DualMonth } from '../types';
-import { saveSalesData, loadSalesData, hasDataForDualMonth } from '../utils/storage';
+import { saveSalesData, loadSalesData, hasDataForDualMonth, getLastDualMonth, setLastDualMonth } from '../utils/storage';
 
 interface SalesInputProps {
   userInfo: UserInfo;
@@ -8,6 +8,16 @@ interface SalesInputProps {
 }
 
 const DUAL_MONTHS: DualMonth[] = ['D1', 'D2', 'D3', 'D4', 'D5', 'D6'];
+
+// D段月份映射
+const DUAL_MONTH_LABELS: Record<DualMonth, string> = {
+  D1: '1-2月',
+  D2: '3-4月',
+  D3: '5-6月',
+  D4: '7-8月',
+  D5: '9-10月',
+  D6: '11-12月',
+};
 
 // 存量产品排列顺序
 const STOCK_PRODUCT_ORDER = ['吡美莫司', '金纽尔', '火把花根', '丽芙', '卡泊三醇', '他克莫司', '其它'];
@@ -19,7 +29,10 @@ interface ProductGroup {
 }
 
 export function SalesInput({ userInfo, onDataSaved }: SalesInputProps) {
-  const [selectedDualMonth, setSelectedDualMonth] = useState<DualMonth>('D1');
+  // 从 localStorage 读取上次选择的 D 段
+  const [selectedDualMonth, setSelectedDualMonth] = useState<DualMonth>(() => {
+    return getLastDualMonth(userInfo.name);
+  });
   const [salesData, setSalesData] = useState<Record<string, number>>({});
   const [filledMonths, setFilledMonths] = useState<Set<DualMonth>>(new Set());
 
@@ -50,6 +63,8 @@ export function SalesInput({ userInfo, onDataSaved }: SalesInputProps) {
 
     setSelectedDualMonth(dm);
     loadMonthData(dm);
+    // 保存用户选择的双月
+    setLastDualMonth(userInfo.name, dm);
     if (onDataSaved) onDataSaved();
   };
 
@@ -141,44 +156,59 @@ export function SalesInput({ userInfo, onDataSaved }: SalesInputProps) {
   const progress = (totalFilled / DUAL_MONTHS.length) * 100;
 
   return (
-    <div className="bg-white rounded-xl border border-teal-100 shadow-sm overflow-hidden">
-      {/* 头部 */}
-      <div className="bg-gradient-to-r from-teal-500 to-cyan-600 px-4 sm:px-6 py-4">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
+    <div className="bg-white rounded-xl border border-teal-100 shadow-sm">
+      {/* 置顶固定区域：头部 + D段标题 */}
+      <div className="sticky top-0 z-20 bg-white rounded-t-xl">
+        {/* 头部 */}
+        <div className="bg-gradient-to-r from-teal-500 to-cyan-600 px-4 sm:px-6 py-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-base sm:text-lg font-bold text-white truncate">销售数据录入</h2>
+                <p className="text-teal-100 text-xs mt-0.5">输入后自动保存</p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <h2 className="text-base sm:text-lg font-bold text-white truncate">销售数据录入</h2>
-              <p className="text-teal-100 text-xs mt-0.5">输入后自动保存</p>
+            <div className="text-right flex-shrink-0">
+              <div className="text-xl sm:text-2xl font-bold text-white">{totalFilled}/{DUAL_MONTHS.length}</div>
+              <div className="text-teal-100 text-[10px]">已完成</div>
             </div>
           </div>
-          <div className="text-right flex-shrink-0">
-            <div className="text-xl sm:text-2xl font-bold text-white">{totalFilled}/{DUAL_MONTHS.length}</div>
-            <div className="text-teal-100 text-[10px]">已完成</div>
+          {/* 进度条 */}
+          <div className="mt-3 h-1 bg-white/20 rounded-full overflow-hidden">
+            <div className="h-full bg-white rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
           </div>
         </div>
-        {/* 进度条 */}
-        <div className="mt-3 h-1 bg-white/20 rounded-full overflow-hidden">
-          <div className="h-full bg-white rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
-        </div>
-      </div>
 
-      <div className="p-4 sm:p-6">
+        {/* 当前D段标题 */}
+        <div className="bg-gradient-to-r from-teal-50 to-cyan-50 px-4 sm:px-6 py-3 border-b border-teal-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-bold text-teal-700">
+                {selectedDualMonth} 数据录入
+              </h3>
+              <p className="text-sm text-teal-500 mt-0.5">{DUAL_MONTH_LABELS[selectedDualMonth]}</p>
+            </div>
+          </div>
+        </div>
+
         {/* 双月选择器 */}
-        <div className="mb-5">
-          <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
-            选择双月周期
-          </label>
-          <div className="grid grid-cols-3 sm:flex sm:flex-wrap gap-2">
+        <div className="px-4 sm:px-6 pt-4 pb-2">
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+              切换双月
+            </label>
+          </div>
+          <div className="grid grid-cols-6 gap-2">
             {DUAL_MONTHS.map(dm => (
               <button
                 key={dm}
                 onClick={() => handleDualMonthChange(dm)}
-                className={`relative px-3 py-2.5 sm:px-4 sm:py-3 rounded-lg font-medium text-sm transition-all border ${
+                className={`relative px-2 py-2 sm:px-3 sm:py-2.5 rounded-lg font-medium text-sm transition-all border ${
                   selectedDualMonth === dm
                     ? 'bg-teal-500 text-white border-teal-500 shadow-md shadow-teal-500/25'
                     : 'bg-white text-gray-600 border-gray-200 hover:border-teal-300 hover:bg-teal-50'
@@ -198,7 +228,9 @@ export function SalesInput({ userInfo, onDataSaved }: SalesInputProps) {
             ))}
           </div>
         </div>
+      </div>
 
+      <div className="p-4 sm:p-6">
         {/* 输入表单 */}
         <div className="space-y-4">
           {/* 存量产品 */}

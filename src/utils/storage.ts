@@ -100,3 +100,22 @@ export function getFilledDualMonths(userName: string): DualMonth[] {
 
   return filled;
 }
+
+// D段记忆功能 - 获取用户上次选择的双月
+export function getLastDualMonth(userName: string): DualMonth {
+  const key = `bonus_calc_last_dual_month_${userName}`;
+  const stored = localStorage.getItem(key);
+  if (stored) {
+    const dm = stored as DualMonth;
+    if (['D1', 'D2', 'D3', 'D4', 'D5', 'D6'].includes(dm)) {
+      return dm;
+    }
+  }
+  return 'D1';
+}
+
+// D段记忆功能 - 保存用户选择的双月
+export function setLastDualMonth(userName: string, dualMonth: DualMonth): void {
+  const key = `bonus_calc_last_dual_month_${userName}`;
+  localStorage.setItem(key, dualMonth);
+}
