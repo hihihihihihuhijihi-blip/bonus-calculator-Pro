@@ -3,18 +3,29 @@ import { Login } from './components/Login';
 import { UserInfoDisplay } from './components/UserInfo';
 import { SalesInput } from './components/SalesInput';
 import { ResultTable } from './components/ResultTable';
+import { Toast } from './components/Toast';
 import { calculateBonus, getUserInfo } from './lib/calculator';
 import { getAllSalesData } from './utils/storage';
 import type { CalculationResult, YearlySummary, UserInfo as UserInfoType } from './types';
+
+interface ToastMessage {
+  message: string;
+  type: 'error' | 'success' | 'warning';
+  key: number;
+}
 
 function App() {
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [userInfo, setUserInfo] = useState<UserInfoType | null>(null);
   const [results, setResults] = useState<CalculationResult[]>([]);
   const [summary, setSummary] = useState<YearlySummary | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastMessage | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
   const [currentView, setCurrentView] = useState<'input' | 'result'>('input');
+
+  const showToast = (message: string, type: 'error' | 'success' | 'warning' = 'error') => {
+    setToast({ message, type, key: Date.now() });
+  };
 
   const handleLogin = (userName: string) => {
     setCurrentUser(userName);
@@ -29,7 +40,7 @@ function App() {
     setUserInfo(null);
     setResults([]);
     setSummary(null);
-    setError(null);
+    setToast(null);
     setCurrentView('input');
   };
 
@@ -37,13 +48,12 @@ function App() {
     if (!currentUser) return;
 
     setIsCalculating(true);
-    setError(null);
 
     setTimeout(() => {
       const salesData = getAllSalesData(currentUser);
 
       if (salesData.length === 0) {
-        setError('请先输入销售数据');
+        showToast('请先输入销售数据');
         setIsCalculating(false);
         return;
       }
@@ -51,11 +61,11 @@ function App() {
       const calculation = calculateBonus(currentUser, salesData);
 
       if (calculation.error) {
-        setError(calculation.error);
+        showToast(calculation.error);
         setResults([]);
         setSummary(null);
       } else {
-        setError(null);
+        showToast('计算完成！', 'success');
         setResults(calculation.results);
         setSummary(calculation.summary);
         setCurrentView('result');
@@ -93,7 +103,7 @@ function App() {
             <SalesInput userInfo={userInfo!} onDataSaved={handleDataSaved} />
 
             {/* 计算按钮 */}
-            <div className="mb-8 flex justify-center">
+            <div className="mt-8 mb-8 flex justify-center">
               <button
                 onClick={handleCalculate}
                 disabled={isCalculating}
@@ -119,16 +129,6 @@ function App() {
                 )}
               </button>
             </div>
-
-            {/* 错误提示 */}
-            {error && (
-              <div className="mb-6 bg-red-50 border-l-4 border-red-400 p-4 rounded-lg flex items-center gap-3">
-                <svg className="w-5 h-5 text-red-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-                <span className="text-red-700 font-medium text-sm">{error}</span>
-              </div>
-            )}
           </>
         ) : (
           <>
@@ -154,6 +154,16 @@ function App() {
           </>
         )}
       </div>
+
+      {/* Toast 提示 */}
+      {toast && (
+        <Toast
+          key={toast.key}
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 }

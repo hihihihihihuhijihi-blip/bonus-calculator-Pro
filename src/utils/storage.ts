@@ -81,19 +81,21 @@ export function clearUserData(userName: string): void {
   }
 }
 
-// 检查某个双月是否有数据
+// 检查某个双月是否有数据（值大于0）
 export function hasDataForDualMonth(userName: string, dualMonth: DualMonth): boolean {
   const data = loadSalesData(userName);
-  return Object.keys(data[dualMonth] || {}).length > 0;
+  const monthData = data[dualMonth] || {};
+  return Object.values(monthData).some(value => value > 0);
 }
 
-// 获取已输入数据的双月列表
+// 获取已输入数据的双月列表（值大于0）
 export function getFilledDualMonths(userName: string): DualMonth[] {
   const data = loadSalesData(userName);
   const filled: DualMonth[] = [];
 
   for (const dm of ['D1', 'D2', 'D3', 'D4', 'D5', 'D6'] as DualMonth[]) {
-    if (Object.keys(data[dm] || {}).length > 0) {
+    const monthData = data[dm] || {};
+    if (Object.values(monthData).some(value => value > 0)) {
       filled.push(dm);
     }
   }
